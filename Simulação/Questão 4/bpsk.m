@@ -1,0 +1,86 @@
+clear all;
+close all;
+
+Nb = 240;                                                    	 %Número de bits, precisa ser múltiplo de 3 e de 8
+
+numSamplesPerSymbol = 16;                                            % Fator de superamostragem 16/amostra              
+span = 10;                                                      
+rolloff = 0.25;                                                      % Fator de roll-off
+
+rectFilter = [rectwin(numSamplesPerSymbol)', zeros(1, 145)];         % Cria filtro retangular com largura Ts
+rrcFilter = rcosdesign(rolloff, span, numSamplesPerSymbol);          % Cria filtro de cosseno levantado
+
+%--Questão 1--%
+
+rng default                                                      % seed default para o randi
+data = randi([0 1],Nb,1);                                           % Gera Nb bits aleatórios
+
+%--Questão 2--%
+
+M = 2;                                                           % M = número de níveis
+BPSK = pskmod(data, M);                                          % Modula os símbolos complexos para BPSK
+
+%--Questão 3--%
+N = log2(M);                                                     % N = número de bit por símbolo
+
+txSgnRECTBPSK = upfirdn(BPSK, rectFilter, numSamplesPerSymbol);  % Aplica o filtro rectangular para BPSK
+nfft = 2^nextpow2(length(txSgnRECTBPSK));
+[espectroRECTBPSK, fRECT] = pwelch(txSgnRECTBPSK, [], [], nfft, numSamplesPerSymbol,'centered', 'power');
+
+txSgnRRCBPSK = upfirdn(BPSK, rrcFilter, numSamplesPerSymbol);    % Aplica o filtro de cosseno levantado para BPSK
+nfft = 2^nextpow2(length(txSgnRRCBPSK));
+[espectroRRCBPSK, fRRC] = pwelch(txSgnRRCBPSK, [], [], nfft, numSamplesPerSymbol,'centered', 'power');
+
+%--Questão 4--%
+
+Fdata = fft(BPSK);                                                % Calcula a transformada de Fourier
+pow = Fdata.*conj(Fdata);                                         % Energia em cada frequência
+signalEnergy = sum(pow);                                          % Energia do sinal
+
+Es = 10*log10(signalEnergy/(Nb/N));                                         % Energia de simbolo
+
+N0 = 0;
+mi = 0;                                                           % Média da distribuição
+sigma = N0/2;                                                     % Variância da distribuição
+
+noise = (mi.*randn(Nb,1) + sigma) + 1i*(mi.*randn(Nb,1) + sigma); % Array de números aleatórios gaussianos complexos
+
+Fnoise = fft(noise);
+pow = Fnoise.*conj(Fnoise);                                       % Energia em cada frequência
+noiseEnergy = sum(pow);                                           % Energia do ruído
+
+No = 10*log10(noiseEnergy/(Nb/N));                                % Calcula N0
+
+EsN0 = 10*log10(Es/No);                                           % Es/N0 em dB
+
+for value = [EsN0, 3, 10]
+figure();
+plot(fRECT, 10*log10(espectroRECTBPSK));
+hold on;
+
+noiseSignal = awgn(txSgnRECTBPSK,value,'measured');
+nfft = 2^nextpow2(length(noiseSignal));
+[espectroRECTNOISE, fNOISE] = pwelch(noiseSignal, [], [], nfft, numSamplesPerSymbol,'centered', 'power');
+
+plot(fNOISE, 10*log10(espectroRECTNOISE));
+legend('Without Noise','With Noise');
+xlabel('Nomalized Frequency')
+ylabel('Magnitude (dB)')
+title(strcat('Spectral Density for BPSK RECT / Eb/N0=',num2str(value)));
+grid
+
+figure();
+plot(fRECT, 10*log10(espectroRRCBPSK));
+hold on;
+
+noiseSignal = awgn(txSgnRRCBPSK,value,'measured');
+nfft = 2^nextpow2(length(noiseSignal));
+[espectroRECTNOISE, fNOISE] = pwelch(noiseSignal, [], [], nfft, numSamplesPerSymbol,'centered', 'power');
+
+plot(fNOISE, 10*log10(espectroRECTNOISE));
+legend('Without Noise','With Noise');
+xlabel('Nomalized Frequency')
+ylabel('Magnitude (dB)')
+title(strcat('Spectral Density for BPSK RRC / Eb/N0=',num2str(value)));
+grid
+end
