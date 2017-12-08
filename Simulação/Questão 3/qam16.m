@@ -22,7 +22,7 @@ for value = [Nb, Nb/10, Nb/100, Nb/1000, Nb/10000]
     %--Questão 2--%
 
     M = 16;                                                          % M = número de níveis
-    QAM16 = pskmod(data, M);                                         % Modula os símbolos complexos para 16-QAM
+    QAM16 = qammod(data, M);                                         % Modula os símbolos complexos para 16-QAM
 
     %--Questão 3--%
     N = log2(M);                                                     % N = número de bit por símbolo
