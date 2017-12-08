@@ -54,37 +54,17 @@ No = 10*log10(noiseEnergy/(Nb/N));                                % Calcula N0
 EsN0 = 10*log10(Es/No);                                           % Es/N0 em dB
 
 for value = [EsN0, 3, 10]
-figure();
-plot(fRECT, 10*log10(espectroRECTBPSK));
-hold on;
+    snr = value + 10*log10(N) - 10*log10(numSamplesPerSymbol);    % SNR de acordo com a Eb/N0 escolhida
 
-snr = value + 10*log10(N) - 10*log10(numSamplesPerSymbol);    % SNR de acordo com a Eb/N0 escolhida
+    noiseSignal = awgn(txSgnRECTBPSK,value,'measured');
+    nfft = 2^nextpow2(length(noiseSignal));
+    [espectroRECTNOISE, fNOISE] = pwelch(noiseSignal, [], [], nfft, numSamplesPerSymbol,'centered', 'power');
 
-noiseSignal = awgn(txSgnRECTBPSK,snr,'measured');
-nfft = 2^nextpow2(length(noiseSignal));
-[espectroRECTNOISE, fNOISE] = pwelch(noiseSignal, [], [], nfft, numSamplesPerSymbol,'centered', 'power');
+    rxSgnRECTBPSK = upfirdn(noiseSignal, rectFilter, 1, numSamplesPerSymbol);  % Aplica o filtro rectangular para BPSK
+    rxSgnRECTBPSK = rxSgnRECTBPSK(span+1:end-span);
 
-plot(fNOISE, 10*log10(espectroRECTNOISE));
-legend('Without Noise','With Noise');
-xlabel('Nomalized Frequency')
-ylabel('Magnitude (dB)')
-title(strcat('Spectral Density for BPSK RECT / Eb/N0=',num2str(value)));
-grid
+    noiseSignal = awgn(txSgnRRCBPSK,value,'measured');
+    nfft = 2^nextpow2(length(noiseSignal));
+    [espectroRECTNOISE, fNOISE] = pwelch(noiseSignal, [], [], nfft, numSamplesPerSymbol,'centered', 'power');
 
-figure();
-plot(fRECT, 10*log10(espectroRRCBPSK));
-hold on;
-
-snr = value + 10*log10(N) - 10*log10(numSamplesPerSymbol);    % SNR de acordo com a Eb/N0 escolhida
-
-noiseSignal = awgn(txSgnRRCBPSK,snr,'measured');
-nfft = 2^nextpow2(length(noiseSignal));
-[espectroRECTNOISE, fNOISE] = pwelch(noiseSignal, [], [], nfft, numSamplesPerSymbol,'centered', 'power');
-
-plot(fNOISE, 10*log10(espectroRECTNOISE));
-legend('Without Noise','With Noise');
-xlabel('Nomalized Frequency')
-ylabel('Magnitude (dB)')
-title(strcat('Spectral Density for BPSK RRC / Eb/N0=',num2str(value)));
-grid
 end
